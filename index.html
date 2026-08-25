@@ -16,6 +16,7 @@
       --red: #ef4444;
       --amber: #f59e0b;
       --purple: #8b5cf6;
+      --pink: #ec4899;
       --text: #f8fafc;
       --subtext: #94a3b8;
     }
@@ -121,6 +122,10 @@
         <span class="stat-val" style="color:var(--green);"><span id="curr-pro">0</span> / 155 g</span>
       </div>
       <div class="stat-row">
+        <span class="stat-label"><span class="stat-badge" style="background:var(--pink);"></span>Fats</span>
+        <span class="stat-val" style="color:var(--pink);"><span id="curr-fat">0</span> / 60-75 g</span>
+      </div>
+      <div class="stat-row">
         <span class="stat-label"><span class="stat-badge" style="background:var(--amber);"></span>Fiber</span>
         <span class="stat-val" style="color:var(--amber);"><span id="curr-fib">0</span> / 30 g</span>
       </div>
@@ -160,7 +165,10 @@
         <div style="flex:1;"><label>Protein (g)</label><input type="number" id="label-pro" placeholder="0"></div>
       </div>
       <div style="display:flex; gap:8px;">
+        <div style="flex:1;"><label>Fat (g)</label><input type="number" id="label-fat" placeholder="0"></div>
         <div style="flex:1;"><label>Fiber (g)</label><input type="number" id="label-fib" placeholder="0"></div>
+      </div>
+      <div style="display:flex; gap:8px;">
         <div style="flex:1;"><label>Calcium (mg)</label><input type="number" id="label-calcium" placeholder="0"></div>
       </div>
 
@@ -221,7 +229,7 @@
     { id: 'h1_5', day: 'Day 5: Arms & Delts', name: 'Rear Delt Fly Machine', defaultWt: 30 }
   ];
 
-  let macros = JSON.parse(localStorage.getItem('user_macros')) || { cal: 0, pro: 0, fib: 0, calcium: 0 };
+  let macros = JSON.parse(localStorage.getItem('user_macros')) || { cal: 0, pro: 0, fat: 0, fib: 0, calcium: 0 };
   let workoutWeights = JSON.parse(localStorage.getItem('user_workouts')) || {};
   let html5QrCode = null;
 
@@ -240,6 +248,7 @@
   function updateMacroUI() {
     document.getElementById('curr-cal').innerText = Math.round(macros.cal);
     document.getElementById('curr-pro').innerText = Math.round(macros.pro);
+    document.getElementById('curr-fat').innerText = Math.round(macros.fat || 0);
     document.getElementById('curr-fib').innerText = Math.round(macros.fib);
     document.getElementById('curr-calcium').innerText = Math.round(macros.calcium);
     localStorage.setItem('user_macros', JSON.stringify(macros));
@@ -263,6 +272,7 @@
     const ratio = eaten / serving;
     macros.cal += (parseFloat(document.getElementById('label-cal').value) || 0) * ratio;
     macros.pro += (parseFloat(document.getElementById('label-pro').value) || 0) * ratio;
+    macros.fat = (macros.fat || 0) + ((parseFloat(document.getElementById('label-fat').value) || 0) * ratio);
     macros.fib += (parseFloat(document.getElementById('label-fib').value) || 0) * ratio;
     macros.calcium += (parseFloat(document.getElementById('label-calcium').value) || 0) * ratio;
 
@@ -273,7 +283,7 @@
 
   function resetDailyMacros() {
     if (confirm('Reset daily numbers?')) {
-      macros = { cal: 0, pro: 0, fib: 0, calcium: 0 };
+      macros = { cal: 0, pro: 0, fat: 0, fib: 0, calcium: 0 };
       updateMacroUI();
     }
   }
@@ -327,6 +337,7 @@
           document.getElementById('label-unit').value = 'g';
           document.getElementById('label-cal').value = Math.round(nut['energy-kcal_100g'] || 0);
           document.getElementById('label-pro').value = Math.round(nut['proteins_100g'] || 0);
+          document.getElementById('label-fat').value = Math.round(nut['fat_100g'] || 0);
           document.getElementById('label-fib').value = Math.round(nut['fiber_100g'] || 0);
           document.getElementById('label-calcium').value = Math.round((nut['calcium_100g'] || 0) * 1000);
           
