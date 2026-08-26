@@ -87,6 +87,20 @@
     /* SCANNER CONTAINER */
     #reader-box { display: none; margin-bottom: 12px; border-radius: 8px; overflow: hidden; border: 1px solid var(--border); }
 
+    /* LOGGED FOOD ITEM LIST */
+    .log-item {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 10px 0; border-bottom: 1px solid var(--border); font-size: 0.9rem;
+    }
+    .log-item:last-child { border-bottom: none; }
+    .log-details { display: flex; flex-direction: column; gap: 2px; }
+    .log-name { font-weight: 700; color: var(--text); }
+    .log-sub { color: var(--subtext); font-size: 0.8rem; }
+    .btn-del {
+      background: rgba(239, 68, 68, 0.15); color: var(--red); border: 1px solid var(--red);
+      padding: 4px 8px; margin-top: 0; width: auto; font-size: 0.75rem; border-radius: 6px;
+    }
+
     /* WORKOUT STYLES */
     .day-header { 
       font-size: 0.95rem; color: var(--accent); margin: 20px 0 8px 0; 
@@ -185,6 +199,12 @@
       <button class="btn-accent" style="margin-top:14px;" onclick="addFoodLog()">Log Food</button>
     </div>
 
+    <!-- FOOD LOG HISTORY CARD -->
+    <div class="card">
+      <strong style="font-size: 0.95rem; color: var(--subtext);">Today's Logged Foods</strong>
+      <div id="food-log-list" style="margin-top:8px;"></div>
+    </div>
+
   </div>
 
   <!-- WORKOUT TAB -->
@@ -230,11 +250,13 @@
   ];
 
   let macros = JSON.parse(localStorage.getItem('user_macros')) || { cal: 0, pro: 0, fat: 0, fib: 0, calcium: 0 };
+  let foodLogs = JSON.parse(localStorage.getItem('user_food_logs')) || [];
   let workoutWeights = JSON.parse(localStorage.getItem('user_workouts')) || {};
   let html5QrCode = null;
 
   function init() {
     updateMacroUI();
+    renderFoodLogs();
     renderWorkouts();
   }
 
@@ -265,26 +287,90 @@
   }
 
   function addFoodLog() {
+    const foodName = document.getElementById('food-name').value.trim() || 'Logged Item';
     const serving = parseFloat(document.getElementById('label-serving').value) || 100;
     const eaten = parseFloat(document.getElementById('user-eaten').value) || 0;
+    const unit = document.getElementById('label-unit').value;
     if (eaten <= 0) return alert('Enter amount eaten');
 
     const ratio = eaten / serving;
-    macros.cal += (parseFloat(document.getElementById('label-cal').value) || 0) * ratio;
-    macros.pro += (parseFloat(document.getElementById('label-pro').value) || 0) * ratio;
-    macros.fat = (macros.fat || 0) + ((parseFloat(document.getElementById('label-fat').value) || 0) * ratio);
-    macros.fib += (parseFloat(document.getElementById('label-fib').value) || 0) * ratio;
-    macros.calcium += (parseFloat(document.getElementById('label-calcium').value) || 0) * ratio;
+    const addedCal = (parseFloat(document.getElementById('label-cal').value) || 0) * ratio;
+    const addedPro = (parseFloat(document.getElementById('label-pro').value) || 0) * ratio;
+    const addedFat = (parseFloat(document.getElementById('label-fat').value) || 0) * ratio;
+    const addedFib = (parseFloat(document.getElementById('label-fib').value) || 0) * ratio;
+    const addedCalcium = (parseFloat(document.getElementById('label-calcium').value) || 0) * ratio;
+
+    macros.cal += addedCal;
+    macros.pro += addedPro;
+    macros.fat = (macros.fat || 0) + addedFat;
+    macros.fib += addedFib;
+    macros.calcium += addedCalcium;
+
+    foodLogs.push({
+      id: Date.now(),
+      name: foodName,
+      amount: eaten,
+      unit: unit,
+      cal: addedCal,
+      pro: addedPro,
+      fat: addedFat,
+      fib: addedFib,
+      calcium: addedCalcium
+    });
+
+    localStorage.setItem('user_food_logs', JSON.stringify(foodLogs));
 
     updateMacroUI();
+    renderFoodLogs();
     document.getElementById('user-eaten').value = '';
-    alert('Logged!');
+    document.getElementById('food-name').value = '';
+  }
+
+  function deleteFoodItem(index) {
+    const item = foodLogs[index];
+    macros.cal = Math.max(0, macros.cal - item.cal);
+    macros.pro = Math.max(0, macros.pro - item.pro);
+    macros.fat = Math.max(0, (macros.fat || 0) - item.fat);
+    macros.fib = Math.max(0, macros.fib - item.fib);
+    macros.calcium = Math.max(0, macros.calcium - item.calcium);
+
+    foodLogs.splice(index, 1);
+    localStorage.setItem('user_food_logs', JSON.stringify(foodLogs));
+
+    updateMacroUI();
+    renderFoodLogs();
+  }
+
+  function renderFoodLogs() {
+    const container = document.getElementById('food-log-list');
+    container.innerHTML = '';
+
+    if (foodLogs.length === 0) {
+      container.innerHTML = '<div style="color:var(--subtext); font-size:0.85rem; padding:8px 0;">No foods logged today.</div>';
+      return;
+    }
+
+    foodLogs.forEach((item, index) => {
+      const row = document.createElement('div');
+      row.className = 'log-item';
+      row.innerHTML = `
+        <div class="log-details">
+          <span class="log-name">${item.name}</span>
+          <span class="log-sub">${item.amount}${item.unit} • ${Math.round(item.cal)} kcal • ${Math.round(item.pro)}g P</span>
+        </div>
+        <button class="btn-del" onclick="deleteFoodItem(${index})">Remove</button>
+      `;
+      container.appendChild(row);
+    });
   }
 
   function resetDailyMacros() {
-    if (confirm('Reset daily numbers?')) {
+    if (confirm('Reset daily numbers and food history?')) {
       macros = { cal: 0, pro: 0, fat: 0, fib: 0, calcium: 0 };
+      foodLogs = [];
+      localStorage.removeItem('user_food_logs');
       updateMacroUI();
+      renderFoodLogs();
     }
   }
 
@@ -341,7 +427,6 @@
           document.getElementById('label-fib').value = Math.round(nut['fiber_100g'] || 0);
           document.getElementById('label-calcium').value = Math.round((nut['calcium_100g'] || 0) * 1000);
           
-          // Auto-fill eaten amount to 1 full serving as default
           document.getElementById('user-eaten').value = 100;
           alert(`Found: ${p.product_name || 'Item'}`);
         } else {
